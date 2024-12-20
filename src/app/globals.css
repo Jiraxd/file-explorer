@@ -14,6 +14,18 @@
   }
 }
 
+.font-bebas {
+  font-family: var(--font-bebas);
+}
+
+.font-source {
+  font-family: var(--font-source-sans);
+}
+
+.font-roboto {
+  font-family: var(--font-roboto);
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

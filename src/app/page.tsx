@@ -37,6 +37,11 @@ export type FileSearchResult = {
   size: number;
 };
 
+type SearchHistory = {
+  name: string;
+  date: string;
+};
+
 export default function FileExplorer() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedExtension, setSelectedExtension] = useState<string>("");
@@ -44,11 +49,15 @@ export default function FileExplorer() {
   const [selectedDisk, setSelectedDisk] = useState<string>("");
   const [diskUsage, setDiskUsage] = useState<DiskUsageProps[]>([]);
   const [disks, setDisks] = useState<string[]>([]);
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
   const [showResults, setShowResults] = useState<boolean>(false);
   const [searching, setSearching] = useState<boolean>(false);
   const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]);
   const [searchingTime, setSearchingTime] = useState<string>("");
+
+  const handleFileOpen = async (path: string) => {
+    await invoke("show_in_explorer", { path });
+  };
 
   useEffect(() => {
     invoke("get_disks").then((response) => {
@@ -81,7 +90,10 @@ export default function FileExplorer() {
           : `${searchDuration} milliseconds`;
       setSearchingTime(formattedTime);
       setSearchResults(result);
-      setSearchHistory((prev) => [searchQuery, ...prev]);
+      setSearchHistory((prev) => [
+        { name: searchQuery, date: Date.now().toString() },
+        ...prev,
+      ]);
       setShowResults(true);
     });
   }
@@ -107,7 +119,8 @@ export default function FileExplorer() {
                 {searchResults.map((result, index) => (
                   <div
                     key={index}
-                    className="p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                    onClick={() => handleFileOpen(result.path)}
+                    className="p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
                   >
                     <h3 className="font-semibold">{result.name}</h3>
                     <p className="text-sm text-gray-300">{result.path}</p>
@@ -210,13 +223,18 @@ export default function FileExplorer() {
                           <li
                             key={index}
                             onClick={() => {
-                              setSearchQuery(item);
+                              setSearchQuery(item.name);
                               search();
                             }}
-                            className="flex items-center space-x-2 text-sm text-gray-300 hover:text-white cursor-pointer"
+                            className="flex flex-row items-center justify-between space-x-2 text-sm text-gray-300 hover:text-white cursor-pointer"
                           >
-                            <FileIcon className="h-4 w-4" />
-                            <span>{item}</span>
+                            <div className="flex flex-row items-center space-x-2">
+                              <FileIcon className="h-4 w-4" />
+                              <span>{item.name}</span>
+                            </div>
+                            <span>
+                              {new Date(parseInt(item.date)).toLocaleString()}
+                            </span>
                           </li>
                         ))}
                       </ul>

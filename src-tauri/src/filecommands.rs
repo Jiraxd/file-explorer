@@ -169,3 +169,14 @@ pub fn get_disks() -> Vec<DiskInfo> {
 
     return disk_info_list;
 }
+
+#[tauri::command]
+pub async fn show_in_explorer(path: String) -> Result<(), String> {
+    use std::process::Command;
+    Command::new("explorer")
+        .args(["/select,", &path])
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}

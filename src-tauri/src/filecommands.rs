@@ -46,15 +46,27 @@ fn search_disk(
 
     let search_query = search_query.to_lowercase();
     let extension = extension.to_lowercase();
-    let (tx, rx) = bounded(1000);
+    let (tx, rx) = bounded(10000);
     let tx = Arc::new(tx);
     let results = Arc::new(Mutex::new(Vec::new()));
 
     let root_entries: Vec<_> = WalkDir::new(disk)
         .max_depth(1)
         .into_iter()
+        .filter_entry(|e| {
+            !is_hidden(e)
+                && !e.path().starts_with("C:\\Windows")
+                && !e.path().starts_with("C:\\ProgramData")
+        })
         .filter_map(|e| e.ok())
+        .collect::<Vec<_>>()
+        .into_iter()
+        .skip(1)
         .collect();
+
+    root_entries.iter().for_each(|f| {
+        println!("{:?}", f);
+    });
 
     let tx_clone = tx.clone();
     root_entries.par_iter().for_each_with(tx, |tx, root_entry| {
@@ -86,26 +98,23 @@ fn process_directory(
     search_folders: bool,
     tx: Sender<FileSearchResult>,
 ) {
-    WalkDir::new(dir)
+    for entry in WalkDir::new(dir)
         .follow_links(false)
         .into_iter()
         .filter_entry(|e| !is_hidden(e))
-        .filter_map(|e| e.ok())
-        .for_each(|entry| {
+    {
+        if let Ok(entry) = entry {
             if let Ok(metadata) = entry.metadata() {
                 let is_dir = metadata.is_dir();
-
                 if is_dir && !search_folders {
-                    return;
+                    continue;
                 }
 
                 if let Some(file_name) = entry.file_name().to_str() {
                     let name_lower = file_name.to_lowercase();
-
                     if !is_dir && !extension.is_empty() && !name_lower.ends_with(&extension) {
-                        return;
+                        continue;
                     }
-
                     if name_lower.contains(search_query) {
                         let _ = tx.send(FileSearchResult {
                             path: entry.path().to_string_lossy().to_string(),
@@ -116,7 +125,8 @@ fn process_directory(
                     }
                 }
             }
-        });
+        }
+    }
 }
 
 #[tauri::command]
